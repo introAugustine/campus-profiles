@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
 const PRICE_PER_SUBMISSION = 8
+const AUTO_REFRESH_SECONDS = 60
 
 type Submission = {
   id: string
@@ -28,6 +29,16 @@ function isToday(iso: string) {
   )
 }
 
+function dateKey(iso: string) {
+  const d = new Date(iso)
+  return d.toISOString().split('T')[0]
+}
+
+function formatDayLabel(key: string) {
+  const d = new Date(key + 'T00:00:00')
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export default function FinancePage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
@@ -36,6 +47,7 @@ export default function FinancePage() {
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [admins, setAdmins] = useState<Admin[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(AUTO_REFRESH_SECONDS)
 
   const loadData = useCallback(async () => {
     const supabase = createClient()
@@ -52,6 +64,7 @@ export default function FinancePage() {
     setSubmissions(subsData || [])
     setAdmins(adminsData || [])
     setLastUpdated(new Date())
+    setSecondsUntilRefresh(AUTO_REFRESH_SECONDS)
   }, [])
 
   useEffect(() => {
@@ -82,6 +95,22 @@ export default function FinancePage() {
     init()
   }, [router, loadData])
 
+  useEffect(() => {
+    if (!isMainAdmin) return
+
+    const countdown = setInterval(() => {
+      setSecondsUntilRefresh((prev) => {
+        if (prev <= 1) {
+          loadData()
+          return AUTO_REFRESH_SECONDS
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(countdown)
+  }, [isMainAdmin, loadData])
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await loadData()
@@ -102,6 +131,13 @@ export default function FinancePage() {
     (s) => s.approved_at && isToday(s.approved_at)
   ).length * PRICE_PER_SUBMISSION
 
+  const now = new Date()
+  const monthRevenue = submissions.filter((s) => {
+    if (!s.approved_at) return false
+    const d = new Date(s.approved_at)
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }).length * PRICE_PER_SUBMISSION
+
   const perAdmin = admins.map((a) => {
     const count = submissions.filter((s) => s.admin_ref === a.ref_code).length
     return { name: a.name, refCode: a.ref_code, count, earnings: count * PRICE_PER_SUBMISSION }
@@ -109,6 +145,16 @@ export default function FinancePage() {
 
   const directCount = submissions.filter((s) => !s.admin_ref).length
   const directEarnings = directCount * PRICE_PER_SUBMISSION
+
+  const dayMap: Record<string, number> = {}
+  submissions.forEach((s) => {
+    if (!s.approved_at) return
+    const key = dateKey(s.approved_at)
+    dayMap[key] = (dayMap[key] || 0) + 1
+  })
+  const dailyHistory = Object.entries(dayMap)
+    .sort((a, b) => b[0].localeCompare(a[0]))
+    .slice(0, 14)
 
   return (
     <div className="min-h-screen bg-blue-50">
@@ -128,7 +174,7 @@ export default function FinancePage() {
             <h1 className="text-2xl font-extrabold text-blue-950">Finance</h1>
             {lastUpdated && (
               <p className="text-xs text-gray-400 mt-1">
-                Last updated {lastUpdated.toLocaleTimeString()}
+                Last updated {lastUpdated.toLocaleTimeString()} · next auto-refresh in {secondsUntilRefresh}s
               </p>
             )}
           </div>
@@ -141,18 +187,22 @@ export default function FinancePage() {
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="bg-white rounded-2xl shadow-sm p-5 text-center">
-            <p className="text-3xl font-extrabold text-blue-950">${todayRevenue}</p>
-            <p className="text-xs text-gray-500 mt-1">Today's Revenue</p>
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
+            <p className="text-2xl font-extrabold text-blue-950">${todayRevenue}</p>
+            <p className="text-xs text-gray-500 mt-1">Today</p>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm p-5 text-center">
-            <p className="text-3xl font-extrabold text-green-700">${totalRevenue}</p>
-            <p className="text-xs text-gray-500 mt-1">Total Revenue</p>
+          <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
+            <p className="text-2xl font-extrabold text-yellow-600">${monthRevenue}</p>
+            <p className="text-xs text-gray-500 mt-1">This Month</p>
+          </div>
+          <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
+            <p className="text-2xl font-extrabold text-green-700">${totalRevenue}</p>
+            <p className="text-xs text-gray-500 mt-1">All-Time Total</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
           <h2 className="font-bold text-lg mb-4">Earnings by Admin</h2>
           <div className="space-y-3">
             {perAdmin.map((a) => (
@@ -173,6 +223,23 @@ export default function FinancePage() {
                 <p className="font-bold text-blue-700">${directEarnings}</p>
               </div>
             )}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          <h2 className="font-bold text-lg mb-4">Daily Revenue History</h2>
+          {dailyHistory.length === 0 && (
+            <p className="text-gray-500 text-sm">No approved submissions yet.</p>
+          )}
+          <div className="space-y-2">
+            {dailyHistory.map(([day, count]) => (
+              <div key={day} className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-0">
+                <p className="text-sm text-gray-600">{formatDayLabel(day)}</p>
+                <p className="text-sm font-semibold text-blue-700">
+                  {count} · ${count * PRICE_PER_SUBMISSION}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
