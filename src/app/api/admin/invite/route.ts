@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
   // Invite the new admin by email (sends them a link to set their password)
   const { data: invited, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: 'http://localhost:3000/admin/set-password',
+    redirectTo: 'https://campus-profiles.vercel.app/admin/set-password',
   })
 
   if (inviteError || !invited.user) {
