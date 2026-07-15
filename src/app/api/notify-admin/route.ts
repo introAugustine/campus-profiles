@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
         <p>A new profile just completed payment and is ready for review.</p>
         <p><strong>Instagram:</strong> ${igHandle}</p>
         <p><strong>Via admin link:</strong> ${adminRef || 'direct (no admin link)'}</p>
-        <p><a href="http://localhost:3000/admin/dashboard">Go to Dashboard</a></p>
+        <p><a href="https://campus-profiles.vercel.app/admin/dashboard">Go to Dashboard</a></p>
       `,
     })
 
