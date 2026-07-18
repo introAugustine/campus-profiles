@@ -22,7 +22,7 @@ export default function HomePage() {
           href="/apply"
           className="inline-block bg-yellow-400 text-blue-950 font-bold px-8 py-4 rounded-xl text-lg hover:bg-yellow-300 transition"
         >
-          Get Featured For $8
+          Get Featured 
         </a>
       </section>
 

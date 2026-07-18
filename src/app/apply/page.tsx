@@ -154,7 +154,7 @@ function ApplyForm() {
             <h2 className="font-bold text-lg mb-4">What Happens Next?</h2>
             <ul className="space-y-2 text-sm">
               <li>✅ Submit your profile</li>
-              <li>✅ Complete payment</li>
+              <li>✅ Complete $8 payment</li>
               <li>✅ We review and prepare your feature</li>
               <li>✅ Your profile goes live soon</li>
             </ul>
