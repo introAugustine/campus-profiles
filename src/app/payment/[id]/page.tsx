@@ -20,6 +20,7 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -38,6 +39,12 @@ export default function PaymentPage() {
     }
     fetchOptions()
   }, [])
+
+  const copyDetails = async (id: string, details: string) => {
+    await navigator.clipboard.writeText(details)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 1500)
+  }
 
   const handleContinue = async () => {
     if (!selectedId) {
@@ -78,13 +85,13 @@ export default function PaymentPage() {
 
         <div className="space-y-3 mb-6">
           {options.map((opt) => (
-            <label
+            <div
               key={opt.id}
-              className={`block bg-white rounded-2xl p-5 cursor-pointer shadow-sm border-2 transition ${
+              className={`bg-white rounded-2xl p-5 shadow-sm border-2 transition ${
                 selectedId === opt.id ? 'border-blue-600' : 'border-transparent'
               }`}
             >
-              <div className="flex items-start gap-3">
+              <label className="flex items-start gap-3 cursor-pointer mb-3">
                 <input
                   type="radio"
                   name="payment"
@@ -96,8 +103,15 @@ export default function PaymentPage() {
                   <p className="font-bold text-lg">{opt.label}</p>
                   <p className="text-sm text-gray-600 whitespace-pre-line">{opt.details}</p>
                 </div>
-              </div>
-            </label>
+              </label>
+              <button
+                type="button"
+                onClick={() => copyDetails(opt.id, opt.details)}
+                className="text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition ml-7"
+              >
+                {copiedId === opt.id ? '✓ Copied' : '📋 Copy details'}
+              </button>
+            </div>
           ))}
         </div>
 
