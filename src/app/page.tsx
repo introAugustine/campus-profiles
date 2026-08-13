@@ -103,10 +103,11 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="text-center py-8 text-sm text-gray-400">
-        <a href="/admin/login" className="hover:text-gray-600 transition">
-          Admin Login
-        </a>
+      <footer className="text-center py-8 text-sm text-gray-400 space-x-4">
+        <a href="/privacy" className="hover:text-gray-600 transition">Privacy</a>
+        <a href="/terms" className="hover:text-gray-600 transition">Terms</a>
+        <a href="/refund" className="hover:text-gray-600 transition">Refunds</a>
+        <a href="/admin/login" className="hover:text-gray-600 transition">Admin Login</a>
       </footer>
     </div>
   )
