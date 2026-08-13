@@ -10,19 +10,19 @@ export default function HomePage() {
       {/* Hero */}
       <section className="bg-gradient-to-b from-blue-700 to-blue-950 text-white px-6 py-20 text-center">
         <p className="uppercase tracking-widest text-sm text-blue-200 mb-4">
-          The easiest way to meet your incoming class
+          Meet your future classmates before you arrive
         </p>
         <h1 className="text-4xl sm:text-5xl font-extrabold leading-tight mb-6 max-w-2xl mx-auto">
-          Get Featured to the Incoming Class
+          Get Discovered by Your Incoming Class
         </h1>
         <p className="text-blue-100 max-w-xl mx-auto mb-8">
-          Submit your photos, bio, and Instagram — get discovered by fellow students before the semester even starts.
+          Create your profile, connect with future classmates, and get noticed before the semester even starts.
         </p>
         <a
           href="/apply"
           className="inline-block bg-yellow-400 text-blue-950 font-bold px-8 py-4 rounded-xl text-lg hover:bg-yellow-300 transition"
         >
-          Get Featured 
+          Get Featured
         </a>
       </section>
 
