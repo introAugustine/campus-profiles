@@ -61,6 +61,47 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* FAQ */}
+      <section className="px-6 py-16 max-w-md mx-auto">
+        <h2 className="text-3xl font-extrabold text-center mb-10">Frequently Asked Questions</h2>
+        <div className="space-y-4">
+          {[
+            {
+              q: 'What happens after I submit?',
+              a: 'Your profile goes into a review queue. Once approved, it gets posted for other students to see.',
+            },
+            {
+              q: 'What does the $8 include?',
+              a: 'The $8 covers review and featuring your profile so incoming students can discover you.',
+            },
+            {
+              q: 'How many photos can I upload?',
+              a: 'You can upload between 1 and 10 photos.',
+            },
+            {
+              q: 'Can I update my profile after submitting?',
+              a: 'Yes, reach out and we can help you make changes before it gets posted.',
+            },
+            {
+              q: 'How long does review take?',
+              a: 'Most profiles are reviewed and posted quickly, usually within a day or two.',
+            },
+            {
+              q: 'Is my Instagram handle required?',
+              a: 'Yes — it\'s how other students will connect with you once your profile is featured.',
+            },
+          ].map((item) => (
+            <details key={item.q} className="bg-white rounded-2xl shadow-sm p-5 group">
+              <summary className="font-bold cursor-pointer list-none flex justify-between items-center">
+                {item.q}
+                <span className="text-blue-700 group-open:rotate-45 transition-transform text-xl">+</span>
+              </summary>
+              <p className="text-gray-600 text-sm mt-3">{item.a}</p>
+            </details>
+          ))}
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="text-center py-8 text-sm text-gray-400">
         <a href="/admin/login" className="hover:text-gray-600 transition">
