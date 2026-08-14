@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
-const PRICE_PER_SUBMISSION = 8
-
 type Submission = {
   id: string
   bio: string
@@ -15,7 +13,7 @@ type Submission = {
   admin_ref: string | null
   status: string
   created_at: string
-  approved_at: string | null
+  is_featured: boolean
 }
 
 const statusStyles: Record<string, string> = {
@@ -25,6 +23,9 @@ const statusStyles: Record<string, string> = {
   posted: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
 }
+
+const PRICE_PER_SUBMISSION = 8
+const MAX_FEATURED = 3
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -55,6 +56,7 @@ export default function DashboardPage() {
   const [adminName, setAdminName] = useState('')
   const [isMainAdmin, setIsMainAdmin] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [featuredError, setFeaturedError] = useState('')
 
   const stats = {
     total: submissions.length,
@@ -67,6 +69,8 @@ export default function DashboardPage() {
   const myEarnings =
     submissions.filter((s) => s.status === 'approved' || s.status === 'posted').length *
     PRICE_PER_SUBMISSION
+
+  const featuredCount = submissions.filter((s) => s.is_featured).length
 
   useEffect(() => {
     const load = async () => {
@@ -113,6 +117,19 @@ export default function DashboardPage() {
     await supabase.from('submissions').update(updates).eq('id', id)
     setSubmissions((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status } : s))
+    )
+  }
+
+  const toggleFeatured = async (id: string, current: boolean) => {
+    setFeaturedError('')
+    if (!current && featuredCount >= MAX_FEATURED) {
+      setFeaturedError(`You can only feature up to ${MAX_FEATURED} profiles. Unfeature one first.`)
+      return
+    }
+    const supabase = createClient()
+    await supabase.from('submissions').update({ is_featured: !current }).eq('id', id)
+    setSubmissions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, is_featured: !current } : s))
     )
   }
 
@@ -198,6 +215,15 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {isMainAdmin && (
+          <div className="bg-white rounded-2xl shadow-sm p-4 mb-4 flex justify-between items-center">
+            <p className="text-sm text-gray-600">
+              Homepage featured slots: <span className="font-bold text-blue-950">{featuredCount}/{MAX_FEATURED}</span>
+            </p>
+            {featuredError && <p className="text-xs text-red-600">{featuredError}</p>}
+          </div>
+        )}
+
         {/* Personal earnings — sub-admins only */}
         {!isMainAdmin && (
           <div className="bg-blue-700 text-white rounded-2xl p-6 mb-8 flex justify-between items-center">
@@ -227,11 +253,18 @@ export default function DashboardPage() {
                     {s.admin_ref && ` · via ${s.admin_ref}`}
                   </p>
                 </div>
-                <span
-                  className={`text-xs font-semibold px-3 py-1 rounded-full ${statusStyles[s.status] || 'bg-gray-100 text-gray-600'}`}
-                >
-                  {s.status.replace('_', ' ')}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span
+                    className={`text-xs font-semibold px-3 py-1 rounded-full ${statusStyles[s.status] || 'bg-gray-100 text-gray-600'}`}
+                  >
+                    {s.status.replace('_', ' ')}
+                  </span>
+                  {s.is_featured && (
+                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                      ⭐ Featured
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="mb-4">
@@ -301,7 +334,19 @@ export default function DashboardPage() {
                     Mark as Posted
                   </button>
                 )}
-                {s.status === 'posted' && (
+                {s.status === 'posted' && isMainAdmin && (
+                  <button
+                    onClick={() => toggleFeatured(s.id, s.is_featured)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+                      s.is_featured
+                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {s.is_featured ? '★ Unfeature' : '☆ Feature on homepage'}
+                  </button>
+                )}
+                {s.status === 'posted' && !isMainAdmin && (
                   <span className="text-sm text-green-700 font-medium">✓ Posted</span>
                 )}
 
