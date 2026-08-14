@@ -1,4 +1,33 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
+
+type FeaturedProfile = {
+  id: string
+  ig_handle: string
+  bio: string
+  photo_urls: string[]
+}
+
 export default function HomePage() {
+  const [featured, setFeatured] = useState<FeaturedProfile[]>([])
+
+  useEffect(() => {
+    const loadFeatured = async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('submissions')
+        .select('id, ig_handle, bio, photo_urls')
+        .eq('is_featured', true)
+        .eq('status', 'posted')
+        .order('created_at', { ascending: false })
+
+      setFeatured(data || [])
+    }
+    loadFeatured()
+  }, [])
+
   return (
     <div>
       {/* Header */}
@@ -26,8 +55,33 @@ export default function HomePage() {
         </a>
       </section>
 
+      {/* Recently Featured */}
+      {featured.length > 0 && (
+        <section className="px-6 py-16 max-w-md mx-auto">
+          <h2 className="text-3xl font-extrabold text-center mb-2">🔥 Recently Featured</h2>
+          <p className="text-gray-500 text-center mb-10">Real students already discovered by their incoming class</p>
+          <div className="space-y-4">
+            {featured.map((profile) => (
+              <div key={profile.id} className="bg-white rounded-2xl shadow-sm p-5 flex gap-4 items-start">
+                {profile.photo_urls?.[0] && (
+                  <img
+                    src={profile.photo_urls[0]}
+                    alt=""
+                    className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                  />
+                )}
+                <div>
+                  <p className="font-bold">{profile.ig_handle}</p>
+                  <p className="text-sm text-gray-600 line-clamp-2">{profile.bio}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* How it works */}
-      <section className="px-6 py-16 max-w-md mx-auto">
+      <section className="px-6 py-16 max-w-md mx-auto bg-blue-50">
         <h2 className="text-3xl font-extrabold text-center mb-10">How It Works</h2>
         <div className="space-y-6">
           {[
@@ -45,7 +99,7 @@ export default function HomePage() {
       </section>
 
       {/* Why choose us */}
-      <section className="px-6 py-16 max-w-md mx-auto bg-blue-50">
+      <section className="px-6 py-16 max-w-md mx-auto">
         <h2 className="text-3xl font-extrabold text-center mb-10">Why Submit Your Profile?</h2>
         <div className="space-y-6">
           {[
@@ -62,7 +116,7 @@ export default function HomePage() {
       </section>
 
       {/* FAQ */}
-      <section className="px-6 py-16 max-w-md mx-auto">
+      <section className="px-6 py-16 max-w-md mx-auto bg-blue-50">
         <h2 className="text-3xl font-extrabold text-center mb-10">Frequently Asked Questions</h2>
         <div className="space-y-4">
           {[
