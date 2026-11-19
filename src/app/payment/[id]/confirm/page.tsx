@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import StepProgress from '@/components/StepProgress'
 
 export default function ConfirmPage() {
   const params = useParams()
@@ -75,6 +76,9 @@ export default function ConfirmPage() {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-10 text-center">
+          <div className="text-left">
+            <StepProgress currentStep={4} />
+          </div>
           <div className="w-16 h-16 rounded-full bg-blue-700 flex items-center justify-center mx-auto mb-6">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -105,10 +109,12 @@ export default function ConfirmPage() {
           Upload a screenshot showing your $8 payment went through.
         </p>
 
+        <StepProgress currentStep={3} stepProgress={screenshot ? 0.5 : 0} />
+
         <label className="block border-2 border-dashed border-blue-400 rounded-xl p-8 text-center bg-blue-50 cursor-pointer mb-6">
           <input type="file" accept="image/*" onChange={handleFileChange} className="hidden" />
           <div className="text-3xl mb-2">🧾</div>
-          <p className="text-blue-700 font-bold">
+          <p className="text-blue-700 font-bold break-all">
             {screenshot ? screenshot.name : 'Select Screenshot'}
           </p>
         </label>

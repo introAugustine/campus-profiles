@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import StepProgress from '@/components/StepProgress'
 
 type PaymentOption = {
   id: string
@@ -83,6 +84,8 @@ export default function PaymentPage() {
         <h1 className="text-3xl font-extrabold text-blue-950 mb-1">Pay $8 to Continue</h1>
         <p className="text-gray-500 mb-6">Choose a payment method below, then send $8.</p>
 
+        <StepProgress currentStep={2} stepProgress={selectedId ? 0.5 : 0} />
+
         <div className="space-y-3 mb-6">
           {options.map((opt) => (
             <div
@@ -99,9 +102,9 @@ export default function PaymentPage() {
                   onChange={() => setSelectedId(opt.id)}
                   className="mt-1 accent-blue-600"
                 />
-                <div>
+                <div className="min-w-0">
                   <p className="font-bold text-lg">{opt.label}</p>
-                  <p className="text-sm text-gray-600 whitespace-pre-line">{opt.details}</p>
+                  <p className="text-sm text-gray-600 whitespace-pre-line break-all">{opt.details}</p>
                 </div>
               </label>
               <button
