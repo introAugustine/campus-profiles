@@ -26,6 +26,7 @@ export default function ManageAdminsPage() {
   const [loading, setLoading] = useState(true)
   const [isMainAdmin, setIsMainAdmin] = useState(false)
   const [currentUserId, setCurrentUserId] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -109,6 +110,13 @@ export default function ManageAdminsPage() {
     await loadAdmins()
   }
 
+  const copyLink = async (admin: Admin) => {
+    const link = `${window.location.origin}/apply?ref=${admin.ref_code}`
+    await navigator.clipboard.writeText(link)
+    setCopiedId(admin.id)
+    setTimeout(() => setCopiedId(null), 1500)
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-blue-50 flex items-center justify-center">
@@ -119,7 +127,7 @@ export default function ManageAdminsPage() {
   if (!isMainAdmin) return null
 
   return (
-    <div className="min-h-screen bg-blue-50">
+    <div className="min-h-screen bg-blue-50 overflow-x-hidden">
       <div className="bg-blue-950 text-white px-6 py-4 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <span className="text-xl">🎓</span>
@@ -172,9 +180,9 @@ export default function ManageAdminsPage() {
 
         <div className="space-y-3">
           {admins.map((a) => (
-            <div key={a.id} className="bg-white rounded-2xl shadow-sm p-5 flex justify-between items-center">
-              <div>
-                <div className="flex items-center gap-2">
+            <div key={a.id} className="bg-white rounded-2xl shadow-sm p-5 flex flex-col gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-bold">{a.name}</p>
                   {a.role === 'main' && (
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">
@@ -191,27 +199,36 @@ export default function ManageAdminsPage() {
                     {isRecentlyActive(a.last_login) ? '● Active' : '○ Offline'}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500">{a.email}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-sm text-gray-500 break-all">{a.email}</p>
+                <p className="text-xs text-gray-400 break-all">
                   Link: /apply?ref={a.ref_code} · Status: {a.status}
                 </p>
               </div>
-              {a.role !== 'main' && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => toggleStatus(a)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
-                  >
-                    {a.status === 'active' ? 'Suspend' : 'Activate'}
-                  </button>
-                  <button
-                    onClick={() => removeAdmin(a)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition"
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
+
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => copyLink(a)}
+                  className="text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                >
+                  {copiedId === a.id ? '✓ Copied' : '🔗 Copy link'}
+                </button>
+                {a.role !== 'main' && (
+                  <>
+                    <button
+                      onClick={() => toggleStatus(a)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      {a.status === 'active' ? 'Suspend' : 'Activate'}
+                    </button>
+                    <button
+                      onClick={() => removeAdmin(a)}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition"
+                    >
+                      Remove
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           ))}
         </div>
