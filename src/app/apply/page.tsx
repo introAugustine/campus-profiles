@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import StepProgress from '@/components/StepProgress'
 
 function ApplyForm() {
   const router = useRouter()
@@ -10,10 +11,20 @@ function ApplyForm() {
   const adminRef = searchParams.get('ref') || null
 
   const [photos, setPhotos] = useState<File[]>([])
+  const [schoolName, setSchoolName] = useState('')
   const [bio, setBio] = useState('')
   const [igHandle, setIgHandle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Fills the progress bar as each part of the form is completed
+  const completed = [
+    schoolName.trim().length > 0,
+    bio.trim().length > 0,
+    igHandle.trim().length > 0,
+    photos.length > 0,
+  ].filter(Boolean).length
+  const stepProgress = completed / 4
 
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
@@ -29,6 +40,10 @@ function ApplyForm() {
     e.preventDefault()
     setError('')
 
+    if (!schoolName.trim()) {
+      setError('Please enter your school name.')
+      return
+    }
     if (photos.length === 0) {
       setError('Please upload at least 1 photo.')
       return
@@ -68,6 +83,7 @@ function ApplyForm() {
       const { data: submission, error: insertError } = await supabase
         .from('submissions')
         .insert({
+          school_name: schoolName.trim(),
           bio,
           ig_handle: igHandle,
           photo_urls: photoUrls,
@@ -95,7 +111,21 @@ function ApplyForm() {
           <p className="text-gray-500">Fill this out to get featured — takes 2 minutes.</p>
         </div>
 
+        <StepProgress currentStep={1} stepProgress={stepProgress} />
+
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* School */}
+          <div className="bg-white rounded-2xl shadow-sm p-6">
+            <label className="block font-bold text-lg mb-3">🏫 School Name</label>
+            <input
+              type="text"
+              value={schoolName}
+              onChange={(e) => setSchoolName(e.target.value)}
+              className="block w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. Prairie View A&M University"
+            />
+          </div>
+
           {/* Bio */}
           <div className="bg-white rounded-2xl shadow-sm p-6">
             <label className="block font-bold text-lg mb-3">✍️ Your Bio</label>
@@ -143,6 +173,7 @@ function ApplyForm() {
           <div className="bg-gray-50 rounded-2xl p-6">
             <h2 className="font-bold text-lg mb-4">Profile Preview</h2>
             <div className="space-y-2 text-sm">
+              <p>🏫 School: <span className="font-semibold">{schoolName || 'Your school'}</span></p>
               <p>📱 Instagram: <span className="font-semibold">{igHandle || 'Your username'}</span></p>
               <p>✍️ Bio:</p>
               <p className="text-gray-500">{bio || 'Your introduction will appear here'}</p>
