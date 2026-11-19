@@ -8,6 +8,7 @@ type Submission = {
   id: string
   bio: string
   ig_handle: string
+  school_name: string | null
   photo_urls: string[]
   payment_screenshot_url: string | null
   admin_ref: string | null
@@ -248,6 +249,9 @@ export default function DashboardPage() {
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-bold text-lg">{s.ig_handle}</p>
+                  {s.school_name && (
+                    <p className="text-sm font-semibold text-blue-700">🏫 {s.school_name}</p>
+                  )}
                   <p className="text-xs text-gray-400">
                     {formatDate(s.created_at)}
                     {s.admin_ref && ` · via ${s.admin_ref}`}
