@@ -57,7 +57,8 @@ async function sendPush(
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload
+          payload,
+          { urgency: 'high', TTL: 3600 }
         )
         sent++
       } catch (err: any) {
