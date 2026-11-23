@@ -8,6 +8,7 @@ type Submission = {
   id: string
   bio: string
   ig_handle: string
+  snapchat_handle?: string | null
   school_name: string | null
   photo_urls: string[]
   payment_screenshot_url: string | null
@@ -19,12 +20,45 @@ type Submission = {
 
 type Preview = { url: string; name: string } | null
 
+const ICONS = {
+  download: 'M12 4v11m0 0l-4-4m4 4l4-4M5 20h14',
+  copy: 'M8 7h8a2 2 0 012 2v10a2 2 0 01-2 2H8a2 2 0 01-2-2V9a2 2 0 012-2zM9 7V5a2 2 0 012-2h2a2 2 0 012 2v2',
+  check: 'M5 13l4 4L19 7',
+  x: 'M6 18L18 6M6 6l12 12',
+  trash:
+    'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
+  external: 'M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14',
+  clock: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  star: 'M12 3l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.8 6.2 20.9l1.1-6.5L2.6 9.8l6.5-.9L12 3z',
+  user: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+  layers: 'M12 3l9 5-9 5-9-5 9-5zM3 13l9 5 9-5',
+  bookmark: 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z',
+  home: 'M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10',
+}
+
+type IconName = keyof typeof ICONS
+
+function Icon({ name, className = 'h-4 w-4' }: { name: IconName; className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d={ICONS[name]} />
+    </svg>
+  )
+}
+
 const statusStyles: Record<string, string> = {
-  pending_payment: 'bg-gray-100 text-gray-600',
-  under_review: 'bg-yellow-100 text-yellow-800',
-  approved: 'bg-blue-100 text-blue-700',
-  posted: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
+  pending_payment: 'bg-slate-700/60 text-slate-300',
+  under_review: 'bg-yellow-500/15 text-yellow-300',
+  approved: 'bg-blue-500/15 text-blue-300',
+  posted: 'bg-green-500/15 text-green-300',
+  rejected: 'bg-red-500/15 text-red-300',
 }
 
 const PRICE_PER_SUBMISSION = 8
@@ -63,30 +97,16 @@ async function downloadFile(url: string, filename: string) {
   }
 }
 
-function DownloadIcon({ className = 'h-4 w-4' }: { className?: string }) {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2.5}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14" />
-    </svg>
-  )
-}
-
 export default function DashboardPage() {
   const router = useRouter()
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
   const [adminName, setAdminName] = useState('')
   const [isMainAdmin, setIsMainAdmin] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [featuredError, setFeaturedError] = useState('')
   const [preview, setPreview] = useState<Preview>(null)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   const stats = {
     total: submissions.length,
@@ -101,6 +121,14 @@ export default function DashboardPage() {
     PRICE_PER_SUBMISSION
 
   const featuredCount = submissions.filter((s) => s.is_featured).length
+
+  const statCards: { label: string; value: number; icon: IconName; tone: string }[] = [
+    { label: 'Total', value: stats.total, icon: 'layers', tone: 'bg-blue-500/15 text-blue-300' },
+    { label: 'Under Review', value: stats.underReview, icon: 'clock', tone: 'bg-yellow-500/15 text-yellow-300' },
+    { label: 'Approved', value: stats.approved, icon: 'check', tone: 'bg-sky-500/15 text-sky-300' },
+    { label: 'Posted', value: stats.posted, icon: 'bookmark', tone: 'bg-green-500/15 text-green-300' },
+    { label: 'Rejected', value: stats.rejected, icon: 'x', tone: 'bg-red-500/15 text-red-300' },
+  ]
 
   useEffect(() => {
     const load = async () => {
@@ -153,7 +181,7 @@ export default function DashboardPage() {
   const toggleFeatured = async (id: string, current: boolean) => {
     setFeaturedError('')
     if (!current && featuredCount >= MAX_FEATURED) {
-      setFeaturedError(`You can only feature up to ${MAX_FEATURED} profiles. Unfeature one first.`)
+      setFeaturedError(`Max ${MAX_FEATURED} featured. Unfeature one first.`)
       return
     }
     const supabase = createClient()
@@ -170,10 +198,10 @@ export default function DashboardPage() {
     setSubmissions((prev) => prev.filter((s) => s.id !== id))
   }
 
-  const copyBio = async (id: string, bio: string) => {
-    await navigator.clipboard.writeText(bio)
-    setCopiedId(id)
-    setTimeout(() => setCopiedId(null), 1500)
+  const copyText = async (key: string, text: string) => {
+    await navigator.clipboard.writeText(text)
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(null), 1500)
   }
 
   const downloadAllPhotos = async (photoUrls: string[], igHandle: string) => {
@@ -191,297 +219,368 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <p className="text-gray-500">Loading dashboard...</p>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-400">Loading dashboard...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-blue-50">
+    <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* Top bar */}
-      <div className="bg-blue-950 text-white px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
+      <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-xl">🎓</span>
-          <span className="font-bold">Campus Profiles Admin</span>
+          <span className="font-bold leading-tight">Campus Profiles Admin</span>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex items-center gap-2 text-sm shrink-0">
           {isMainAdmin && (
             <>
-              <a href="/admin/finance" className="text-blue-200 hover:text-white transition">
+              <a
+                href="/admin/finance"
+                className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-full transition"
+              >
                 Finance
               </a>
-              <a href="/admin/manage" className="text-blue-200 hover:text-white transition">
+              <a href="/admin/manage" className="text-slate-300 hover:text-white px-2 transition">
                 Manage Admins
               </a>
             </>
           )}
-          <button onClick={handleLogout} className="text-blue-200 hover:text-white transition">
+          <button onClick={handleLogout} className="text-slate-300 hover:text-white px-2 transition">
             Log out
           </button>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 py-8">
-        <h1 className="text-2xl font-extrabold text-blue-950 mb-1">Welcome, {adminName}</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          {isMainAdmin
-            ? 'Viewing all submissions across every admin link'
-            : 'Viewing submissions from your link only'}
-        </p>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
-          {[
-            { label: 'Total', value: stats.total, color: 'text-blue-950' },
-            { label: 'Under Review', value: stats.underReview, color: 'text-yellow-700' },
-            { label: 'Approved', value: stats.approved, color: 'text-blue-700' },
-            { label: 'Posted', value: stats.posted, color: 'text-green-700' },
-            { label: 'Rejected', value: stats.rejected, color: 'text-red-700' },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-white rounded-2xl shadow-sm p-4 text-center">
-              <p className={`text-2xl font-extrabold ${stat.color}`}>{stat.value}</p>
-              <p className="text-xs text-gray-500 mt-1">{stat.label}</p>
+      <div className="max-w-3xl mx-auto px-3 py-4 space-y-4">
+        {/* Welcome + stats */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-xl bg-blue-500/15 text-blue-300 flex items-center justify-center shrink-0">
+              <Icon name="user" className="h-5 w-5" />
             </div>
-          ))}
-        </div>
-
-        {isMainAdmin && (
-          <div className="bg-white rounded-2xl shadow-sm p-4 mb-4 flex justify-between items-center">
-            <p className="text-sm text-gray-600">
-              Homepage featured slots: <span className="font-bold text-blue-950">{featuredCount}/{MAX_FEATURED}</span>
-            </p>
-            {featuredError && <p className="text-xs text-red-600">{featuredError}</p>}
-          </div>
-        )}
-
-        {/* Personal earnings: sub-admins only */}
-        {!isMainAdmin && (
-          <div className="bg-blue-700 text-white rounded-2xl p-6 mb-8 flex justify-between items-center">
-            <div>
-              <p className="font-bold text-lg">Your Earnings</p>
-              <p className="text-sm text-blue-200">From your approved & posted submissions</p>
+            <div className="min-w-0">
+              <h1 className="text-xl font-extrabold leading-tight">Welcome, {adminName}</h1>
+              <p className="text-xs text-slate-400">
+                {isMainAdmin
+                  ? 'Viewing all submissions across every admin link'
+                  : 'Viewing submissions from your link only'}
+              </p>
             </div>
-            <p className="text-3xl font-extrabold">${myEarnings}</p>
           </div>
-        )}
-        {isMainAdmin && <div className="mb-4" />}
 
-        <div className="space-y-5">
-          {submissions.length === 0 && (
-            <div className="bg-white rounded-2xl p-8 text-center text-gray-500 shadow-sm">
-              No submissions yet.
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            {statCards.map((stat, i) => (
+              <div
+                key={stat.label}
+                className={`bg-slate-800/60 rounded-xl p-3 flex items-center gap-3 ${
+                  i === statCards.length - 1 ? 'col-span-2 sm:col-span-1' : ''
+                }`}
+              >
+                <div className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${stat.tone}`}>
+                  <Icon name={stat.icon} />
+                </div>
+                <div>
+                  <p className="text-xl font-extrabold leading-none">{stat.value}</p>
+                  <p className="text-[11px] text-slate-400 mt-1">{stat.label}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {isMainAdmin && (
+            <div className="mt-3 bg-blue-500/10 border border-blue-500/20 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+              <p className="text-sm text-slate-200 flex items-center gap-2">
+                <Icon name="home" className="h-4 w-4 text-blue-300" />
+                Homepage featured slots:{' '}
+                <span className="font-bold">
+                  {featuredCount}/{MAX_FEATURED}
+                </span>
+              </p>
+              {featuredError && <p className="text-xs text-red-300">{featuredError}</p>}
             </div>
           )}
 
-          {submissions.map((s) => {
-            const handle = s.ig_handle.replace('@', '')
-            return (
-              <div key={s.id} className="bg-white rounded-2xl shadow-sm p-5 sm:p-6">
-                {/* Header */}
-                <div className="flex justify-between items-start gap-3 mb-4">
-                  <div className="min-w-0">
-                    <p className="font-bold text-lg break-all">{s.ig_handle}</p>
-                    {s.school_name && (
-                      <p className="text-sm font-semibold text-blue-700">🏫 {s.school_name}</p>
-                    )}
-                    <p className="text-xs text-gray-400">
-                      {formatDate(s.created_at)}
-                      {s.admin_ref && ` · via ${s.admin_ref}`}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span
-                      className={`text-xs font-semibold px-3 py-1 rounded-full ${statusStyles[s.status] || 'bg-gray-100 text-gray-600'}`}
-                    >
-                      {s.status.replace('_', ' ')}
-                    </span>
-                    {s.is_featured && (
-                      <span className="text-xs font-semibold px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">
-                        ⭐ Featured
-                      </span>
-                    )}
-                  </div>
-                </div>
+          {!isMainAdmin && (
+            <div className="mt-3 bg-blue-600 rounded-xl px-4 py-3 flex justify-between items-center">
+              <div>
+                <p className="font-bold">Your Earnings</p>
+                <p className="text-xs text-blue-100">From your approved & posted submissions</p>
+              </div>
+              <p className="text-2xl font-extrabold">${myEarnings}</p>
+            </div>
+          )}
+        </div>
 
-                {/* Bio */}
-                <div className="bg-gray-50 rounded-xl p-4 mb-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-1">Bio</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-line mb-3">{s.bio}</p>
-                  <button
-                    onClick={() => copyBio(s.id, s.bio)}
-                    className="text-xs font-semibold px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
-                  >
-                    {copiedId === s.id ? '✓ Copied' : '📋 Copy bio'}
-                  </button>
-                </div>
+        {/* Submissions */}
+        {submissions.length === 0 && (
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400">
+            No submissions yet.
+          </div>
+        )}
 
-                {/* Photos: all visible in a grid */}
-                <div className="mb-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
-                      Photos ({s.photo_urls.length})
-                    </p>
-                    {s.photo_urls.length > 1 && (
-                      <button
-                        onClick={() => downloadAllPhotos(s.photo_urls, s.ig_handle)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition"
-                      >
-                        ⬇️ Download all
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {s.photo_urls.map((url, i) => (
-                      <div
-                        key={i}
-                        className="relative aspect-square rounded-xl overflow-hidden bg-gray-100"
-                      >
-                        <img
-                          src={url}
-                          alt=""
-                          onClick={() =>
-                            setPreview({ url, name: `${handle}-photo-${i + 1}.${getExt(url)}` })
-                          }
-                          className="w-full h-full object-cover cursor-pointer"
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            downloadFile(url, `${handle}-photo-${i + 1}.${getExt(url)}`)
-                          }}
-                          aria-label={`Download photo ${i + 1}`}
-                          className="absolute bottom-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition"
-                        >
-                          <DownloadIcon />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+        {submissions.map((s) => {
+          const handle = s.ig_handle.replace('@', '')
+          const photos = s.photo_urls || []
+          const isExpanded = !!expanded[s.id]
+          const proofName = s.payment_screenshot_url
+            ? `${handle}-payment.${getExt(s.payment_screenshot_url)}`
+            : ''
 
-                {/* Payment proof */}
-                <div className="mb-4">
-                  <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
-                    Payment proof
-                  </p>
-                  {s.payment_screenshot_url ? (
-                    <div className="flex gap-3 items-start">
-                      <div className="relative w-36 sm:w-44 shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
-                        <img
-                          src={s.payment_screenshot_url}
-                          alt="Payment screenshot"
-                          onClick={() =>
-                            setPreview({
-                              url: s.payment_screenshot_url!,
-                              name: `${handle}-payment.${getExt(s.payment_screenshot_url!)}`,
-                            })
-                          }
-                          className="w-full max-h-56 object-cover object-top cursor-pointer"
-                        />
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            downloadFile(
-                              s.payment_screenshot_url!,
-                              `${handle}-payment.${getExt(s.payment_screenshot_url!)}`
-                            )
-                          }}
-                          aria-label="Download payment screenshot"
-                          className="absolute bottom-1.5 right-1.5 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition"
-                        >
-                          <DownloadIcon />
-                        </button>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <button
-                          onClick={() =>
-                            setPreview({
-                              url: s.payment_screenshot_url!,
-                              name: `${handle}-payment.${getExt(s.payment_screenshot_url!)}`,
-                            })
-                          }
-                          className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-left"
-                        >
-                          👁 View full size
-                        </button>
-                        <button
-                          onClick={() =>
-                            downloadFile(
-                              s.payment_screenshot_url!,
-                              `${handle}-payment.${getExt(s.payment_screenshot_url!)}`
-                            )
-                          }
-                          className="text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 transition text-left"
-                        >
-                          ⬇️ Download
-                        </button>
-                      </div>
-                    </div>
+          return (
+            <div key={s.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+              {/* Header */}
+              <div className="flex items-center gap-3 pb-3 border-b border-slate-800">
+                <div className="h-12 w-12 rounded-full bg-blue-500/15 text-blue-300 flex items-center justify-center overflow-hidden shrink-0">
+                  {photos[0] ? (
+                    <img src={photos[0]} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <p className="text-sm text-gray-400">No payment screenshot uploaded yet.</p>
+                    <Icon name="user" className="h-6 w-6" />
                   )}
                 </div>
-
-                {/* Actions */}
-                <div className="flex gap-2 flex-wrap items-center border-t border-gray-100 pt-4">
-                  {s.status === 'under_review' && (
-                    <>
-                      <button
-                        onClick={() => updateStatus(s.id, 'approved')}
-                        className="bg-blue-700 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-semibold transition"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => updateStatus(s.id, 'rejected')}
-                        className="bg-red-50 hover:bg-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-semibold transition"
-                      >
-                        Reject
-                      </button>
-                    </>
+                <div className="min-w-0 flex-1">
+                  <p className="font-bold text-lg leading-tight break-all">{s.ig_handle}</p>
+                  {s.school_name && (
+                    <p className="text-sm font-semibold text-blue-400 leading-tight">🏫 {s.school_name}</p>
                   )}
-                  {s.status === 'approved' && (
-                    <button
-                      onClick={() => updateStatus(s.id, 'posted')}
-                      className="bg-yellow-400 hover:bg-yellow-300 text-blue-950 px-4 py-2 rounded-lg text-sm font-semibold transition"
-                    >
-                      Mark as Posted
-                    </button>
-                  )}
-                  {s.status === 'posted' && isMainAdmin && (
-                    <button
-                      onClick={() => toggleFeatured(s.id, s.is_featured)}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
-                        s.is_featured
-                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {s.is_featured ? '★ Unfeature' : '☆ Feature on homepage'}
-                    </button>
-                  )}
-                  {s.status === 'posted' && !isMainAdmin && (
-                    <span className="text-sm text-green-700 font-medium">✓ Posted</span>
-                  )}
-
-                  <button
-                    onClick={() => deleteSubmission(s.id, s.ig_handle)}
-                    className="ml-auto text-xs font-semibold px-3 py-1.5 rounded-full bg-red-50 text-red-600 hover:bg-red-100 transition"
+                  <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
+                    <Icon name="clock" className="h-3 w-3" />
+                    {formatDate(s.created_at)}
+                    {s.admin_ref && ` • via ${s.admin_ref}`}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <span
+                    className={`text-xs font-semibold px-3 py-1 rounded-full capitalize ${statusStyles[s.status] || statusStyles.pending_payment}`}
                   >
-                    🗑 Delete
-                  </button>
+                    {s.status.replace('_', ' ')}
+                  </span>
+                  {s.is_featured && (
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-yellow-500/15 text-yellow-300">
+                      ⭐ Featured
+                    </span>
+                  )}
                 </div>
               </div>
-            )
-          })}
-        </div>
+
+              {/* Bio */}
+              <div className="mt-3 bg-slate-800/60 rounded-xl p-3 flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold uppercase tracking-wide text-slate-400 mb-1">Bio</p>
+                  <p
+                    className={`text-sm text-slate-200 whitespace-pre-line ${isExpanded ? '' : 'line-clamp-2'}`}
+                  >
+                    {s.bio}
+                  </p>
+                  {s.bio.length > 90 && (
+                    <button
+                      onClick={() => setExpanded((prev) => ({ ...prev, [s.id]: !isExpanded }))}
+                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 mt-1"
+                    >
+                      {isExpanded ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => copyText(`${s.id}-bio`, s.bio)}
+                  className="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-100 transition"
+                >
+                  <Icon name={copiedKey === `${s.id}-bio` ? 'check' : 'copy'} className="h-3.5 w-3.5" />
+                  {copiedKey === `${s.id}-bio` ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+
+              {/* Handles */}
+              <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="bg-slate-800/60 rounded-xl p-3 flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-gradient-to-tr from-yellow-400 via-pink-500 to-purple-600 flex items-center justify-center text-lg shrink-0">
+                    📷
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-slate-400">Instagram</p>
+                    <a
+                      href={`https://instagram.com/${handle}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm text-slate-100 hover:text-blue-300 break-all"
+                    >
+                      @{handle}
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => copyText(`${s.id}-ig`, `@${handle}`)}
+                    className="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-100 transition"
+                  >
+                    <Icon name={copiedKey === `${s.id}-ig` ? 'check' : 'copy'} className="h-3.5 w-3.5" />
+                    {copiedKey === `${s.id}-ig` ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+
+                {s.snapchat_handle && (
+                  <div className="bg-slate-800/60 rounded-xl p-3 flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-lg bg-yellow-400 flex items-center justify-center text-lg shrink-0">
+                      👻
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-bold text-slate-400">Snapchat</p>
+                      <p className="text-sm text-slate-100 break-all">{s.snapchat_handle}</p>
+                    </div>
+                    <button
+                      onClick={() => copyText(`${s.id}-snap`, s.snapchat_handle!)}
+                      className="shrink-0 flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-slate-700 hover:bg-slate-600 text-slate-100 transition"
+                    >
+                      <Icon name={copiedKey === `${s.id}-snap` ? 'check' : 'copy'} className="h-3.5 w-3.5" />
+                      {copiedKey === `${s.id}-snap` ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Photos */}
+              <div className="mt-3">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-bold">Photos ({photos.length})</p>
+                  {photos.length > 1 && (
+                    <button
+                      onClick={() => downloadAllPhotos(photos, s.ig_handle)}
+                      className="text-xs font-semibold text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                    >
+                      Download all <Icon name="download" className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-1.5">
+                  {photos.map((url, i) => (
+                    <div
+                      key={i}
+                      className="relative aspect-square rounded-lg overflow-hidden bg-slate-800"
+                    >
+                      <img
+                        src={url}
+                        alt=""
+                        onClick={() =>
+                          setPreview({ url, name: `${handle}-photo-${i + 1}.${getExt(url)}` })
+                        }
+                        className="w-full h-full object-cover cursor-pointer"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          downloadFile(url, `${handle}-photo-${i + 1}.${getExt(url)}`)
+                        }}
+                        aria-label={`Download photo ${i + 1}`}
+                        className="absolute bottom-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-1 transition"
+                      >
+                        <Icon name="download" className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Payment proof */}
+              <div className="mt-3 pt-3 border-t border-slate-800">
+                <p className="text-sm font-bold mb-2">Payment Proof</p>
+                {s.payment_screenshot_url ? (
+                  <div className="flex items-center gap-3">
+                    <div className="relative w-24 h-28 shrink-0 rounded-lg overflow-hidden bg-slate-800 border border-slate-700">
+                      <img
+                        src={s.payment_screenshot_url}
+                        alt="Payment screenshot"
+                        onClick={() => setPreview({ url: s.payment_screenshot_url!, name: proofName })}
+                        className="w-full h-full object-cover object-top cursor-pointer"
+                      />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          downloadFile(s.payment_screenshot_url!, proofName)
+                        }}
+                        aria-label="Download payment screenshot"
+                        className="absolute bottom-1 right-1 bg-black/70 hover:bg-black text-white rounded-full p-1 transition"
+                      >
+                        <Icon name="download" className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setPreview({ url: s.payment_screenshot_url!, name: proofName })}
+                      className="flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-100 transition"
+                    >
+                      <Icon name="external" className="h-4 w-4" />
+                      View Full Size
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No payment screenshot uploaded yet.</p>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="mt-3 pt-3 border-t border-slate-800 flex gap-2">
+                {s.status === 'under_review' && (
+                  <>
+                    <button
+                      onClick={() => updateStatus(s.id, 'approved')}
+                      className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-sm font-bold transition"
+                    >
+                      <Icon name="check" /> Approve
+                    </button>
+                    <button
+                      onClick={() => updateStatus(s.id, 'rejected')}
+                      className="flex-1 flex items-center justify-center gap-2 bg-red-500/15 hover:bg-red-500/25 text-red-300 py-2.5 rounded-xl text-sm font-bold transition"
+                    >
+                      <Icon name="x" /> Reject
+                    </button>
+                  </>
+                )}
+                {s.status === 'approved' && (
+                  <button
+                    onClick={() => updateStatus(s.id, 'posted')}
+                    className="flex-1 flex items-center justify-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 py-2.5 rounded-xl text-sm font-bold transition"
+                  >
+                    <Icon name="bookmark" /> Mark as Posted
+                  </button>
+                )}
+                {s.status === 'posted' && isMainAdmin && (
+                  <button
+                    onClick={() => toggleFeatured(s.id, s.is_featured)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold transition ${
+                      s.is_featured
+                        ? 'bg-yellow-500/15 text-yellow-300 hover:bg-yellow-500/25'
+                        : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                    }`}
+                  >
+                    <Icon name="star" />
+                    {s.is_featured ? 'Unfeature' : 'Feature on homepage'}
+                  </button>
+                )}
+                {s.status === 'posted' && !isMainAdmin && (
+                  <div className="flex-1 flex items-center justify-center gap-2 text-green-300 text-sm font-semibold">
+                    <Icon name="check" /> Posted
+                  </div>
+                )}
+                {(s.status === 'pending_payment' || s.status === 'rejected') && (
+                  <div className="flex-1 flex items-center text-xs text-slate-500">
+                    {s.status === 'pending_payment' ? 'Waiting for payment proof' : 'Rejected'}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => deleteSubmission(s.id, s.ig_handle)}
+                  className="flex-1 sm:flex-none sm:px-5 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl text-sm font-bold transition"
+                >
+                  <Icon name="trash" /> Delete
+                </button>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Full-size preview */}
       {preview && (
         <div
-          className="fixed inset-0 z-[60] bg-black/85 flex flex-col items-center justify-center p-4"
+          className="fixed inset-0 z-[60] bg-black/90 flex flex-col items-center justify-center p-4"
           onClick={() => setPreview(null)}
         >
           <img
@@ -493,9 +592,9 @@ export default function DashboardPage() {
           <div className="flex gap-3 mt-4" onClick={(e) => e.stopPropagation()}>
             <button
               onClick={() => downloadFile(preview.url, preview.name)}
-              className="bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-bold text-sm px-5 py-2.5 rounded-full transition"
+              className="flex items-center gap-2 bg-yellow-400 hover:bg-yellow-300 text-blue-950 font-bold text-sm px-5 py-2.5 rounded-full transition"
             >
-              ⬇️ Download
+              <Icon name="download" /> Download
             </button>
             <button
               onClick={() => setPreview(null)}
