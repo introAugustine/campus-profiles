@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import PwaInstall from '@/components/PwaInstall'
+import EnableNotifications from '@/components/EnableNotifications'
 
 export const metadata: Metadata = {
   manifest: '/admin.webmanifest',
@@ -23,6 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <>
       {children}
       <PwaInstall />
+      <EnableNotifications />
     </>
   )
 }
