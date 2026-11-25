@@ -8,26 +8,15 @@ import PublicHeader from '@/components/PublicHeader'
 import Icon, { type IconName } from '@/components/Icon'
 
 const inputClass =
-  'block w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
+  'block w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
 
-function Section({
-  icon,
-  title,
-  children,
-}: {
-  icon: IconName
-  title: string
-  children: React.ReactNode
-}) {
+function CardTitle({ icon, title }: { icon: IconName; title: string }) {
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <div className="h-9 w-9 rounded-full bg-blue-500/15 text-blue-300 flex items-center justify-center shrink-0">
-          <Icon name={icon} />
-        </div>
-        <h2 className="font-bold">{title}</h2>
+    <div className="flex items-center gap-2 mb-2">
+      <div className="h-8 w-8 rounded-full bg-blue-500/15 text-blue-300 flex items-center justify-center shrink-0">
+        <Icon name={icon} className="h-4 w-4" />
       </div>
-      {children}
+      <h2 className="font-bold text-sm leading-tight">{title}</h2>
     </div>
   )
 }
@@ -134,27 +123,30 @@ function ApplyForm() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <PublicHeader />
 
-      <div className="max-w-2xl mx-auto px-3 py-4">
-        <div className="mb-4">
-          <h1 className="text-2xl font-extrabold">Submit Your Profile</h1>
-          <p className="text-sm text-slate-400">Fill this out to get featured, takes 2 minutes.</p>
+      <div className="max-w-2xl mx-auto px-3 py-3">
+        <div className="mb-3">
+          <h1 className="text-xl font-extrabold leading-tight">Submit Your Profile</h1>
+          <p className="text-xs text-slate-400">Fill this out to get featured, takes 2 minutes.</p>
         </div>
 
         <StepProgress currentStep={1} stepProgress={stepProgress} />
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid sm:grid-cols-2 gap-3">
-            <Section icon="school" title="School Name">
+        <form onSubmit={handleSubmit} className="space-y-2.5">
+          {/* School + Bio side by side */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+              <CardTitle icon="school" title="School Name" />
               <input
                 type="text"
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
                 className={inputClass}
-                placeholder="e.g. Prairie View A&M University"
+                placeholder="e.g. Prairie View A&M"
               />
-            </Section>
+            </div>
 
-            <Section icon="user" title="Your Bio">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+              <CardTitle icon="user" title="Your Bio" />
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
@@ -162,10 +154,12 @@ function ApplyForm() {
                 className={inputClass}
                 placeholder="Tell students about yourself..."
               />
-            </Section>
+            </div>
           </div>
 
-          <Section icon="camera" title="Instagram Handle">
+          {/* Instagram */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+            <CardTitle icon="camera" title="Instagram Handle" />
             <input
               type="text"
               value={igHandle}
@@ -173,11 +167,15 @@ function ApplyForm() {
               className={inputClass}
               placeholder="@yourusername"
             />
-          </Section>
+          </div>
 
-          <Section icon="photo" title="Upload Your Photos">
-            <p className="text-sm text-slate-400 mb-3">Add up to 10 clear photos for your profile.</p>
-            <label className="block border-2 border-dashed border-blue-500/60 hover:border-blue-400 rounded-xl p-5 text-center bg-slate-800/40 cursor-pointer transition">
+          {/* Photos: title left, upload box right */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <CardTitle icon="photo" title="Upload Your Photos" />
+              <p className="text-xs text-slate-400">Add up to 10 clear photos for your profile.</p>
+            </div>
+            <label className="w-[46%] shrink-0 block border-2 border-dashed border-blue-500/60 hover:border-blue-400 rounded-xl py-3 px-2 text-center bg-slate-800/40 cursor-pointer transition">
               <input
                 type="file"
                 accept="image/*"
@@ -185,47 +183,45 @@ function ApplyForm() {
                 onChange={handlePhotoChange}
                 className="hidden"
               />
-              <div className="flex justify-center text-blue-300 mb-1">
-                <Icon name="camera" className="h-8 w-8" />
+              <div className="flex justify-center text-blue-300">
+                <Icon name="camera" className="h-6 w-6" />
               </div>
-              <p className="text-blue-300 font-bold">Select Photos</p>
-              <p className="text-slate-400 text-sm mt-1">{photos.length}/10 uploaded</p>
+              <p className="text-blue-300 font-bold text-sm leading-tight mt-1">Select Photos</p>
+              <p className="text-slate-400 text-xs">{photos.length}/10 uploaded</p>
             </label>
-          </Section>
+          </div>
 
-          <div className="grid sm:grid-cols-2 gap-3">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-9 w-9 rounded-full bg-blue-500/15 text-blue-300 flex items-center justify-center shrink-0">
-                  <Icon name="eye" />
-                </div>
-                <h2 className="font-bold">Profile Preview</h2>
-              </div>
-              <div className="space-y-1.5 text-sm">
-                <p className="text-slate-400">
-                  School: <span className="font-semibold text-slate-100">{schoolName || 'Your school'}</span>
+          {/* Preview + What happens next */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+              <CardTitle icon="eye" title="Profile Preview" />
+              <div className="space-y-1 text-xs">
+                <p className="text-slate-400 break-words">
+                  School:{' '}
+                  <span className="font-semibold text-slate-100">{schoolName || 'Your school'}</span>
                 </p>
-                <p className="text-slate-400">
-                  Instagram: <span className="font-semibold text-slate-100">{igHandle || 'Your username'}</span>
+                <p className="text-slate-400 break-words">
+                  Instagram:{' '}
+                  <span className="font-semibold text-slate-100">{igHandle || 'Your username'}</span>
                 </p>
-                <p className="text-slate-400 line-clamp-3">
+                <p className="text-slate-400 line-clamp-2 break-words">
                   Bio: <span className="text-slate-200">{bio || 'Your introduction will appear here'}</span>
                 </p>
               </div>
             </div>
 
-            <div className="bg-blue-600 rounded-2xl p-4">
-              <h2 className="font-bold mb-3">What Happens Next?</h2>
-              <ul className="space-y-2 text-sm">
+            <div className="bg-blue-600 rounded-2xl p-3">
+              <h2 className="font-bold text-sm mb-2">What Happens Next?</h2>
+              <ul className="space-y-1.5 text-xs">
                 {[
                   'Submit your profile',
                   'Complete $8 payment',
                   'We review and prepare your feature',
                   'Your profile goes live soon',
                 ].map((item) => (
-                  <li key={item} className="flex items-center gap-2">
-                    <span className="h-5 w-5 rounded-md bg-green-500 flex items-center justify-center shrink-0">
-                      <Icon name="check" className="h-3.5 w-3.5 text-white" />
+                  <li key={item} className="flex items-start gap-1.5">
+                    <span className="h-4 w-4 rounded bg-green-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <Icon name="check" className="h-3 w-3 text-white" />
                     </span>
                     {item}
                   </li>
@@ -239,7 +235,7 @@ function ApplyForm() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-4 rounded-xl font-bold text-lg disabled:opacity-50 transition"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold text-base disabled:opacity-50 transition"
           >
             {loading ? 'Submitting...' : 'Continue to Payment'}
             {!loading && <Icon name="arrowRight" />}
