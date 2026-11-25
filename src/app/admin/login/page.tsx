@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
+const inputClass =
+  'block w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
+
 export default function AdminLoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
@@ -39,12 +42,12 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-blue-950 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-8">
-        <div className="text-center mb-8">
-          <span className="text-3xl">🎓</span>
-          <h1 className="text-2xl font-extrabold text-blue-950 mt-2">Admin Login</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to manage submissions</p>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <div className="text-center mb-6">
+          <span className="text-4xl">🎓</span>
+          <h1 className="text-2xl font-extrabold mt-2">Admin Login</h1>
+          <p className="text-slate-400 text-sm mt-1">Sign in to manage submissions</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
@@ -54,7 +57,7 @@ export default function AdminLoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="block w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               required
             />
           </div>
@@ -65,17 +68,17 @@ export default function AdminLoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               required
             />
           </div>
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {error && <p className="text-red-400 text-sm">{error}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-xl font-bold disabled:opacity-50 transition"
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold disabled:opacity-50 transition"
           >
             {loading ? 'Logging in...' : 'Log In'}
           </button>

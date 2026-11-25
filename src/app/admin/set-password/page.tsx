@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 
+const inputClass =
+  'block w-full bg-slate-800 border border-slate-700 rounded-xl p-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500'
+
 export default function SetPasswordPage() {
   const router = useRouter()
   const [password, setPassword] = useState('')
@@ -76,17 +79,19 @@ export default function SetPasswordPage() {
 
   if (checkingSession) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <p className="text-gray-500">Verifying your invite link...</p>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-400">Verifying your invite link...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 flex items-center justify-center px-4">
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-8">
-        <h1 className="text-2xl font-extrabold text-blue-950 mb-2">Set Your Password</h1>
-        <p className="text-gray-500 mb-6">Welcome! Create a password to access your admin dashboard.</p>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-2xl p-6">
+        <h1 className="text-2xl font-extrabold mb-2">Set Your Password</h1>
+        <p className="text-slate-400 text-sm mb-6">
+          Welcome! Create a password to access your admin dashboard.
+        </p>
 
         {sessionReady ? (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -95,7 +100,7 @@ export default function SetPasswordPage() {
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               required
             />
             <input
@@ -103,20 +108,20 @@ export default function SetPasswordPage() {
               placeholder="Confirm password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="block w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className={inputClass}
               required
             />
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white py-3 rounded-xl font-bold disabled:opacity-50 transition"
+              className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold disabled:opacity-50 transition"
             >
               {loading ? 'Saving...' : 'Set Password & Continue'}
             </button>
           </form>
         ) : (
-          <p className="text-red-600 text-sm">{error}</p>
+          <p className="text-red-400 text-sm">{error}</p>
         )}
       </div>
     </div>

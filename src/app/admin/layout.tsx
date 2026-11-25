@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import PwaInstall from '@/components/PwaInstall'
 import EnableNotifications from '@/components/EnableNotifications'
+import AdminShell from '@/components/AdminShell'
 
 export const metadata: Metadata = {
   manifest: '/admin.webmanifest',
@@ -22,7 +23,7 @@ export const viewport: Viewport = {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      {children}
+      <AdminShell>{children}</AdminShell>
       <PwaInstall />
       <EnableNotifications />
     </>

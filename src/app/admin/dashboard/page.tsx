@@ -211,12 +211,6 @@ export default function DashboardPage() {
     }
   }
 
-  const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/admin/login')
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -227,32 +221,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Top bar */}
-      <div className="bg-slate-900 border-b border-slate-800 px-4 py-3 flex justify-between items-center gap-3">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xl">🎓</span>
-          <span className="font-bold leading-tight">Campus Profiles Admin</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm shrink-0">
-          {isMainAdmin && (
-            <>
-              <a
-                href="/admin/finance"
-                className="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-3 py-1.5 rounded-full transition"
-              >
-                Finance
-              </a>
-              <a href="/admin/manage" className="text-slate-300 hover:text-white px-2 transition">
-                Manage Admins
-              </a>
-            </>
-          )}
-          <button onClick={handleLogout} className="text-slate-300 hover:text-white px-2 transition">
-            Log out
-          </button>
-        </div>
-      </div>
-
       <div className="max-w-3xl mx-auto px-3 py-4 space-y-4">
         {/* Welcome + stats */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">

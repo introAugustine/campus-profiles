@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import Icon from '@/components/Icon'
 
 const PRICE_PER_SUBMISSION = 8
 const AUTO_REFRESH_SECONDS = 60
@@ -19,24 +20,45 @@ type Admin = {
   name: string
 }
 
-function isToday(iso: string) {
-  const d = new Date(iso)
-  const now = new Date()
-  return (
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
-  )
-}
-
-function dateKey(iso: string) {
-  const d = new Date(iso)
-  return d.toISOString().split('T')[0]
+// Day keys use the viewer's local time, not UTC
+function localKey(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 function formatDayLabel(key: string) {
-  const d = new Date(key + 'T00:00:00')
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
+
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length === 0) return null
+  const w = 160
+  const h = 70
+  const pad = 8
+  const max = Math.max(...values, 1)
+  const pts = values.map((v, i) => ({
+    x: values.length === 1 ? w / 2 : pad + (i / (values.length - 1)) * (w - pad * 2),
+    y: h - pad - (v / max) * (h - pad * 2),
+  }))
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full">
+      <polyline
+        points={pts.map((p) => `${p.x},${p.y}`).join(' ')}
+        fill="none"
+        stroke="#60a5fa"
+        strokeWidth="2"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="3" fill="#60a5fa" />
+      ))}
+    </svg>
+  )
 }
 
 export default function FinancePage() {
@@ -46,25 +68,26 @@ export default function FinancePage() {
   const [isMainAdmin, setIsMainAdmin] = useState(false)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [admins, setAdmins] = useState<Admin[]>([])
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(AUTO_REFRESH_SECONDS)
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+  const busyRef = useRef(false)
 
   const loadData = useCallback(async () => {
+    if (busyRef.current) return
+    busyRef.current = true
     const supabase = createClient()
 
     const { data: subsData } = await supabase
       .from('submissions')
       .select('id, admin_ref, status, approved_at')
-      .in('status', ['approved', 'posted'])
+      .in('status', ['under_review', 'approved', 'posted'])
 
-    const { data: adminsData } = await supabase
-      .from('admins')
-      .select('ref_code, name')
+    const { data: adminsData } = await supabase.from('admins').select('ref_code, name')
 
     setSubmissions(subsData || [])
     setAdmins(adminsData || [])
-    setLastUpdated(new Date())
-    setSecondsUntilRefresh(AUTO_REFRESH_SECONDS)
+    setLastUpdated(Date.now())
+    busyRef.current = false
   }, [])
 
   useEffect(() => {
@@ -95,21 +118,23 @@ export default function FinancePage() {
     init()
   }, [router, loadData])
 
+  // Tick once a second so the countdown moves
   useEffect(() => {
     if (!isMainAdmin) return
+    const timer = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(timer)
+  }, [isMainAdmin])
 
-    const countdown = setInterval(() => {
-      setSecondsUntilRefresh((prev) => {
-        if (prev <= 1) {
-          loadData()
-          return AUTO_REFRESH_SECONDS
-        }
-        return prev - 1
-      })
-    }, 1000)
+  const secondsLeft = lastUpdated
+    ? Math.min(AUTO_REFRESH_SECONDS, Math.max(0, AUTO_REFRESH_SECONDS - Math.floor((now - lastUpdated) / 1000)))
+    : AUTO_REFRESH_SECONDS
 
-    return () => clearInterval(countdown)
-  }, [isMainAdmin, loadData])
+  // Auto-refresh when the countdown reaches zero
+  useEffect(() => {
+    if (isMainAdmin && lastUpdated && secondsLeft === 0) {
+      loadData()
+    }
+  }, [secondsLeft, isMainAdmin, lastUpdated, loadData])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -119,129 +144,160 @@ export default function FinancePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-blue-50 flex items-center justify-center">
-        <p className="text-gray-500">Loading finance data...</p>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-400">Loading finance data...</p>
       </div>
     )
   }
   if (!isMainAdmin) return null
 
-  const totalRevenue = submissions.length * PRICE_PER_SUBMISSION
-  const todayRevenue = submissions.filter(
-    (s) => s.approved_at && isToday(s.approved_at)
-  ).length * PRICE_PER_SUBMISSION
+  const today = new Date()
+  const todayKey = localKey(today)
 
-  const now = new Date()
-  const monthRevenue = submissions.filter((s) => {
-    if (!s.approved_at) return false
-    const d = new Date(s.approved_at)
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
-  }).length * PRICE_PER_SUBMISSION
+  // Only approved and posted submissions count as revenue
+  const paid = submissions.filter((s) => s.status === 'approved' || s.status === 'posted')
+  const pendingReview = submissions.filter((s) => s.status === 'under_review').length
 
-  const perAdmin = admins.map((a) => {
-    const count = submissions.filter((s) => s.admin_ref === a.ref_code).length
-    return { name: a.name, refCode: a.ref_code, count, earnings: count * PRICE_PER_SUBMISSION }
-  })
+  const totalRevenue = paid.length * PRICE_PER_SUBMISSION
+  const todayRevenue =
+    paid.filter((s) => s.approved_at && localKey(new Date(s.approved_at)) === todayKey).length *
+    PRICE_PER_SUBMISSION
+  const monthRevenue =
+    paid.filter((s) => {
+      if (!s.approved_at) return false
+      const d = new Date(s.approved_at)
+      return d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth()
+    }).length * PRICE_PER_SUBMISSION
+  const pendingValue = pendingReview * PRICE_PER_SUBMISSION
 
-  const directCount = submissions.filter((s) => !s.admin_ref).length
-  const directEarnings = directCount * PRICE_PER_SUBMISSION
+  const perAdmin = admins
+    .map((a) => {
+      const count = paid.filter((s) => s.admin_ref === a.ref_code).length
+      return { key: a.ref_code, name: a.name, earnings: count * PRICE_PER_SUBMISSION }
+    })
+    .sort((x, y) => y.earnings - x.earnings)
+
+  const directCount = paid.filter((s) => !s.admin_ref).length
+  if (directCount > 0) {
+    perAdmin.push({ key: '_direct', name: 'Direct', earnings: directCount * PRICE_PER_SUBMISSION })
+  }
 
   const dayMap: Record<string, number> = {}
-  submissions.forEach((s) => {
+  paid.forEach((s) => {
     if (!s.approved_at) return
-    const key = dateKey(s.approved_at)
+    const key = localKey(new Date(s.approved_at))
     dayMap[key] = (dayMap[key] || 0) + 1
   })
   const dailyHistory = Object.entries(dayMap)
     .sort((a, b) => b[0].localeCompare(a[0]))
     .slice(0, 14)
+  const chartValues = dailyHistory
+    .slice(0, 7)
+    .reverse()
+    .map(([, count]) => count * PRICE_PER_SUBMISSION)
 
   return (
-    <div className="min-h-screen bg-blue-50">
-      <div className="bg-blue-950 text-white px-6 py-4 flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <span className="text-xl">🎓</span>
-          <span className="font-bold">Campus Profiles Admin</span>
+    <div className="min-h-screen bg-slate-950 text-slate-100">
+      <div className="max-w-3xl mx-auto px-3 py-4 space-y-4">
+        <div>
+          <h1 className="text-2xl font-extrabold leading-tight">Finance</h1>
+          <p className="text-sm text-slate-400">Revenue counts once a submission is approved.</p>
         </div>
-        <a href="/admin/dashboard" className="text-blue-200 hover:text-white text-sm transition">
-          Back to Dashboard
-        </a>
-      </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-extrabold text-blue-950">Finance</h1>
+        {/* Total + refresh */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-14 w-14 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
+              <Icon name="dollar" className="h-7 w-7" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Total Earnings</p>
+              <p className="text-4xl font-extrabold leading-none">${totalRevenue}</p>
+              <p className="text-xs text-green-300 mt-1">Today: ${todayRevenue}</p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm px-4 py-2.5 rounded-xl disabled:opacity-50 transition"
+            >
+              <Icon name="refresh" className="h-4 w-4" />
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </button>
             {lastUpdated && (
-              <p className="text-xs text-gray-400 mt-1">
-                Last updated {lastUpdated.toLocaleTimeString()} · next auto-refresh in {secondsUntilRefresh}s
+              <p className="text-[11px] text-slate-500 mt-2 leading-snug">
+                Last updated:
+                <br />
+                {new Date(lastUpdated).toLocaleTimeString()}
+                <br />
+                next auto-refresh in {secondsLeft}s
               </p>
             )}
           </div>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="text-sm font-semibold px-4 py-2 rounded-full bg-blue-700 hover:bg-blue-800 text-white disabled:opacity-50 transition"
-          >
-            {refreshing ? 'Refreshing...' : '🔄 Refresh'}
-          </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 mb-8">
-          <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
-            <p className="text-2xl font-extrabold text-blue-950">${todayRevenue}</p>
-            <p className="text-xs text-gray-500 mt-1">Today</p>
+        {/* Small cards */}
+        <div className="grid grid-cols-3 gap-2.5">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Icon name="clock" className="h-3.5 w-3.5 text-blue-300" /> Today
+            </p>
+            <p className="text-xl font-extrabold mt-1">${todayRevenue}</p>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
-            <p className="text-2xl font-extrabold text-yellow-600">${monthRevenue}</p>
-            <p className="text-xs text-gray-500 mt-1">This Month</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Icon name="card" className="h-3.5 w-3.5 text-green-300" /> This Month
+            </p>
+            <p className="text-xl font-extrabold mt-1">${monthRevenue}</p>
           </div>
-          <div className="bg-white rounded-2xl shadow-sm p-4 text-center">
-            <p className="text-2xl font-extrabold text-green-700">${totalRevenue}</p>
-            <p className="text-xs text-gray-500 mt-1">All-Time Total</p>
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3">
+            <p className="text-xs text-slate-400 flex items-center gap-1.5">
+              <Icon name="eye" className="h-3.5 w-3.5 text-yellow-300" /> Pending Review
+            </p>
+            <p className="text-xl font-extrabold mt-1">${pendingValue}</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
-          <h2 className="font-bold text-lg mb-4">Earnings by Admin</h2>
-          <div className="space-y-3">
+        {/* Earnings by admin */}
+        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <h2 className="font-extrabold mb-3 flex items-center gap-2">
+            <Icon name="users" className="h-5 w-5 text-blue-300" /> Earnings by Admin
+          </h2>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {perAdmin.map((a) => (
-              <div key={a.refCode} className="flex justify-between items-center border-b border-gray-100 pb-3 last:border-0 last:pb-0">
-                <div>
-                  <p className="font-semibold">{a.name}</p>
-                  <p className="text-xs text-gray-400">{a.count} approved submission{a.count !== 1 ? 's' : ''}</p>
+              <div key={a.key} className="bg-slate-800/60 rounded-xl p-2.5 text-center">
+                <div className="h-9 w-9 mx-auto rounded-full bg-blue-500/20 text-blue-300 font-bold flex items-center justify-center mb-1.5">
+                  {a.name.charAt(0).toUpperCase()}
                 </div>
-                <p className="font-bold text-blue-700">${a.earnings}</p>
+                <p className="text-xs text-slate-300 truncate">{a.name}</p>
+                <p className="font-extrabold">${a.earnings}</p>
               </div>
             ))}
-            {directCount > 0 && (
-              <div className="flex justify-between items-center border-t border-gray-100 pt-3">
-                <div>
-                  <p className="font-semibold">Direct (no admin link)</p>
-                  <p className="text-xs text-gray-400">{directCount} approved submission{directCount !== 1 ? 's' : ''}</p>
-                </div>
-                <p className="font-bold text-blue-700">${directEarnings}</p>
-              </div>
-            )}
           </div>
-        </div>
+        </section>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="font-bold text-lg mb-4">Daily Revenue History</h2>
-          {dailyHistory.length === 0 && (
-            <p className="text-gray-500 text-sm">No approved submissions yet.</p>
-          )}
-          <div className="space-y-2">
-            {dailyHistory.map(([day, count]) => (
-              <div key={day} className="flex justify-between items-center border-b border-gray-100 pb-2 last:border-0">
-                <p className="text-sm text-gray-600">{formatDayLabel(day)}</p>
-                <p className="text-sm font-semibold text-blue-700">
-                  {count} · ${count * PRICE_PER_SUBMISSION}
-                </p>
+        {/* Revenue history */}
+        <section className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <h2 className="font-extrabold mb-3">Recent Revenue History</h2>
+          {dailyHistory.length === 0 ? (
+            <p className="text-sm text-slate-500">No approved submissions yet.</p>
+          ) : (
+            <div className="flex gap-4 items-center">
+              <div className="flex-1 min-w-0 divide-y divide-slate-800">
+                {dailyHistory.slice(0, 5).map(([day, count]) => (
+                  <div key={day} className="flex justify-between py-2 text-sm">
+                    <span className="text-slate-400">{formatDayLabel(day)}</span>
+                    <span className="font-bold">${count * PRICE_PER_SUBMISSION}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="w-32 h-20 shrink-0">
+                <Sparkline values={chartValues} />
+              </div>
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )
